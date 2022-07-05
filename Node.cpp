@@ -2,6 +2,7 @@
 #include "cstdlib"
 Node::Node(int _data){
     data = _data;
+    
     next = NULL;
     prev = NULL;
 }

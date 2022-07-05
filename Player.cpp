@@ -5,15 +5,15 @@ void Player::move(int direction){
     setXPrev(getX());
     setYPrev(getY());
     if (!direction){
-        if (getX()+24 <= 288){
-            setX(getX()+24);
+        if (getX()+20 <= 288){
+            setX(getX()+20);
             //Serial.printf("NEW X: %d", getX());
         }
         
     }
     if (direction){
-        if (getX()-24 >= 0){
-            setX(getX()-24);
+        if (getX()-20 >= 0){
+            setX(getX()-20);
             //Serial.printf("NEW X: %d", getX());
         }
     }
