@@ -12,9 +12,6 @@ void Enemy::move(int xPlayer, int yPlayer, unsigned long t){
     float b = getY()-(getM()*getX());
     setY(getY()+5);
     xPlayer < getX() ? setX(getX()-getSpeed()) : setX(getX()+getSpeed());
-    //setY((int)getM()*getX()+b); //THIS LINE IS THE PROBLEM
-    
-    
     
 }
 float Enemy::recalcSlope(int xPlayer){
@@ -54,4 +51,11 @@ int Enemy::getDistance(int xPlayer, int yPlayer){
   int b = getY() - yPlayer;
   int c = (int)sqrt(pow(a, 2)+pow(b, 2));
   return c;
+}
+
+void Enemy::setDirection(int _r){
+  randDirection = _r;
+}
+int Enemy::getDirection(){
+  return randDirection;
 }

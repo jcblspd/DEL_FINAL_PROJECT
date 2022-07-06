@@ -4,9 +4,10 @@
 #include "Arduino.h"
 class Enemy : public GameObject{
   bool hit;
-  bool valid = false;
+  bool valid = true;
   int distance;
   float m;
+  int randDirection;
 public:
     Enemy(int _x, int _y, int _type) : GameObject(_x, _y, _type){};
     void move(int xPlayer, int yPlayer, unsigned long t);
@@ -20,5 +21,7 @@ public:
     float recalcSlope(int xPlayer);
     void setM(float _m);
     float getM();
+    void setDirection(int _r);
+    int getDirection();
 };
 #endif

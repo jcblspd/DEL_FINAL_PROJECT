@@ -1,28 +1,20 @@
-//#include <USBHost_t36>
-#include "USBHost_t36.h"
-#include <Encoder.h>
-
-
-//Verison 2: Revision A
-// 6.26.22 Jacob LaSpada
+//Jacob LaSpada
 /*
- * Current Problems:
- * Ships draw over each other (in contact AND in creation)
- * Randomization should be improved  ^^
  * Desired Features:
  * Implement newLifeTimer
  * Implement Blinking
+ * 
  */
 
 
-//           Setup                  //
+//-----------------------------------------Setup--------------------------------------------------//
 
 //  LIBRARIES   //
+#include "USBHost_t36.h"
+#include <Encoder.h>
 #include "SPI.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_ILI9341.h"
-
-
 //  BITMAPS   //
 #include "StarImage.h"
 #include "SpaceShipImage.h"
@@ -66,24 +58,7 @@ Encoder enc(33, 34);
 int oldPosition = 0;
 int currKey = 0;
 int currMode = 0;
-
 Toggle* toggle = new Toggle(32, -1);
-/*
-TempButtons* t1 = new TempButtons(28, 0);
-TempButtons* t2 = new TempButtons(29, 1);
-TempButtons* t3 = new TempButtons(30, 2);
-TempButtons* t4 = new TempButtons(31, 3);
-TempButtons* t5 = new TempButtons(41, 4);
-TempButtons* t6 = new TempButtons(40, 5);
-TempButtons* t7 = new TempButtons(33, 6);
-TempButtons* t8 = new TempButtons(34, 7);
-TempButtons* t9 = new TempButtons(35, 8);
-TempButtons* t10 = new TempButtons(36, 9);
-TempButtons* t11 = new TempButtons(37, 10);
-TempButtons* t12 = new TempButtons(38, 11);
-*/
-//Toggle *buttonSwitch = new Toggle(35, -2);
-
 Node *c = new Node(48);
 Node *cd = new Node(49);
 Node *d = new Node(50);
@@ -96,39 +71,32 @@ Node *ga = new Node(56);
 Node *a = new Node(57);
 Node *ab = new Node(58);
 Node *b = new Node(59);
-
 Scale *currScale = NULL;
 Node *letters[12] = {c, cd, d, de, e, f, fg, g, ga, a, ab, b};
 String arrLetters[12] = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
-String modes[3]={"Major", "Minor", "Harmonic Minor"};
-
-
+String modes[2]={"Major", "Minor"};
 Node *curr = NULL;
-
 int LEDArray[4] = {0, 1, 2, 3};
-//TempButtons* buttonArr[12] = {t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12};
 int arrSize = 12;
 bool gameOn = false;
 int menuStep = 0;
 Player player1(0, 208, 'p');
 Player* playerPtr = &player1;
-//int nextIndex = 0;
-int directionFlag = 0; //0 forward (false), 1 backwards
 unsigned long gameTimer = 0;
-unsigned long newLifeTimer = 0;
+unsigned long newLifeTimer = 0; //unused currently
 unsigned long differenceTime = 0;
 int numEnemies = 0;
 int numEnemiesKilled = 0;
 Enemy* allEnemies[MAX_ENEMIES];
-//Enemy* validEnemies[MAX_ENEMIES];
-//Enemy* invalidEnemies[MAX_ENEMIES];
 int secs = 0;
-int rotaryClick = 0;
 bool selection = false;
-//srand(static_cast<unsigned int> (time(0)));
 
 
 //      Function Prototypes         //
+bool checkMove(int j);
+void enemyEscape(int i);
+void enemyDisposal(int i);
+void displayKeyChoice();
 void oneClickRight();
 void oneClickLeft();
 void onNoteOn(byte channel, byte note, byte velocity);
@@ -146,12 +114,12 @@ void onRelease();
 void onSwitch();
 void onPoweroff();
 void onRelease();
+void redrawObject(int xP, int yP);
 void writeText(int x, int y, uint16_t color, int sizeText, String message);
 void draw(int x, int y, const uint16_t *bitmap, int wd, int ht);
 
 //----------------------SETUP-------------------//
 void setup() {
-    
     SPI.setMOSI(TFT_MOSI);
     SPI.setSCK(TFT_CLK);
     Serial.begin(9600);
@@ -166,35 +134,32 @@ void setup() {
         pinMode(LEDArray[i], INPUT);
     }
     randomSeed(analogRead(0));
-    //Cmajor->SanityCheckNodes();
-    //Dmajor->SanityCheckNodes();
-    //buttonSwitch->pressHandler(onPressRotary);
-    //buttonSwitch->releaseHandler(onRelease);
     toggle->pressHandler(onSwitch);
     toggle->releaseHandler(onPoweroff);
     Serial.println("GAME LOG");
 }
 
-
+//-------------------------------------------------------LOOP---------------------------------//
 void loop() {
     digitalWrite(3, HIGH);
     readInput();
     if (gameOn){
-      Serial.println(menuStep);
+      digitalWrite(1, HIGH);
         if (player1.getLives() != 0){
             gameTimer = millis() - differenceTime;
             if (gameTimer % 1000 == 0){
-              Serial.println("\n\n");
+              //Serial.println("\n\n");
               //checkEnemyConditions();
               secs++;
               redrawObject(300, 0);
               writeText(300, 0, ILI9341_GREEN, 1, secs);
             }
            
-            if ((numEnemies < 3) && (gameTimer > (5000*numEnemies)) && (numEnemies != 10)){
+            if ((numEnemies == 0 && gameTimer < 5000) || ((gameTimer > (5000*numEnemies)) && (numEnemies != 10))){
                 Enemy* enemySpawn = new Enemy(random(0, 288), 0, 'e');
-                Serial.printf("%d::Enemy #%d Spawn at (%d, %d)\n", gameTimer, numEnemies+1, enemySpawn->getX(), enemySpawn->getY());
+                //Serial.printf("%d::Enemy #%d Spawn at (%d, %d)\n", gameTimer, numEnemies+1, enemySpawn->getX(), enemySpawn->getY());
                 draw(enemySpawn->getX(), enemySpawn->getY(), EnemyBitmap, 32, 32);
+                enemySpawn->setDirection(random(0, 2));
                 enemySpawn->setSpeedMovement(5);
                 enemySpawn->setValid(true);
                 int index = 0;
@@ -225,39 +190,8 @@ void loop() {
 }
 
 
-//-----------------USER FUNCTIONS DEFINITIONS--------------//
 
-
-void onNoteOn(byte channel, byte note, byte velocity){
-  //Serial.print("Note On, ch=");
-  //Serial.print(channel);
-  Serial.print("\nnote= ");
-  Serial.print(note);
-  //Serial.print(", velocity=");
-  //Serial.print(velocity);
-  Serial.println();
-  if (!gameOn){
-    advanceMenu(note);
-    menuStep++;
-  }
-  else{
-    interpretInput(note);
-  }
-}
-void onNoteOff(byte channel, byte note, byte velocity){
-}
-
-void onControlChange(byte channel, byte control, byte value)
-{
-  Serial.print("Control Change, ch=");
-  Serial.print(channel);
-  Serial.print(", control=");
-  Serial.print(control);
-  Serial.print(", value=");
-  Serial.print(value);
-  Serial.println();
-}
-
+//-----------------------------------------------------Enemy Functions------------------------------------------------------------//
 
 void checkEnemyConditions(){
   for (int i = 0; i < 10; i++){
@@ -269,27 +203,6 @@ void checkEnemyConditions(){
   }
   Serial.printf("Player: (%d, %d)\n", player1.getX(), player1.getY());
 }
-void EndingSequence(){
-  tft.fillScreen(ILI9341_BLACK);
-  for (int i = 0; i < 3; i++){
-    writeText(60, 50, ILI9341_GREEN, 3, "GAME OVER");
-    delay(500);
-    writeText(60, 50, ILI9341_BLACK, 3, "GAME OVER");
-    delay(500);
-    
-  }
-  displayScore();
-}
-void displayScore(){
-  int score  = (int)gameTimer * numEnemiesKilled;
-  tft.fillScreen(ILI9341_BLACK);
-  writeText(80, 50, ILI9341_GREEN, 3, score);
-  delay(3000);
-  draw(0, 0, starImageBitmap, STARIMAGE_WIDTH, STARIMAGE_HEIGHT);
-  writeText(50, 120, ILI9341_WHITE, 2, "THANKS FOR PLAYING");
-  delay(2000);
-  gameOn = false;
-}
 
 void checkHitboxes(){
   
@@ -299,40 +212,77 @@ void checkHitboxes(){
         if ( (player1.getX() < allEnemies[i]->getX() && player1.getX()+32 > allEnemies[i]->getX()) 
         || (player1.getX() > allEnemies[i]->getX() && allEnemies[i]->getX()+32 < player1.getX()+32))
         {
-          redrawObject(allEnemies[i]->getX(), allEnemies[i]->getY());
-          draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
-          Serial.println("ENEMY HIT");
-          allEnemies[i]=NULL;
-          numEnemies--;
-          player1.setLives(player1.getLives()-1);
+          enemyDisposal(i);
         }
         else{
-          Serial.println("ENEMY ESCAPE");
-          Serial.printf("X: %d Y: %d\n", allEnemies[i]->getX(), allEnemies[i]->getY());
-          numEnemies--;
-          numEnemiesKilled++;
-          redrawObject(allEnemies[i]->getX(), allEnemies[i]->getY());
-          draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
-          allEnemies[i] = NULL;
+          enemyEscape(i);
         }
+      }
+      else if(allEnemies[i]->getX()+32 <= 32)
+      {
+        enemyEscape(i);
       }
     }
   }
 }
+
+void enemyDisposal(int i){
+  redrawObject(allEnemies[i]->getX(), allEnemies[i]->getY());
+  draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
+  Serial.println("ENEMY HIT");
+  allEnemies[i]=NULL;
+  numEnemies--;
+  player1.setLives(player1.getLives()-1);
+}
+void enemyEscape(int i){
+  Serial.println("ENEMY ESCAPE");
+  Serial.printf("X: %d Y: %d\n", allEnemies[i]->getX(), allEnemies[i]->getY());
+  numEnemies--;
+  numEnemiesKilled++;
+  redrawObject(allEnemies[i]->getX(), allEnemies[i]->getY());
+  draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
+  allEnemies[i] = NULL;
+}
 void moveEnemies(){
   for (int i = 0; i < MAX_ENEMIES; i++){
     if (allEnemies[i] != NULL){
+      
       tft.drawPixel(allEnemies[i]->getX(), allEnemies[i]->getY(), ILI9341_YELLOW);
       if (!(allEnemies[i]->getX() < 0 || allEnemies[i]->getX() > 288 || allEnemies[i]->getY() < 0 || allEnemies[i]->getY() > 208))
       {
         allEnemies[i]->move(player1.getX(), player1.getY(), gameTimer);
+        if (!checkMove(i)){
+          if (allEnemies[i]->getDirection() > 0){
+            allEnemies[i]->setX(allEnemies[i]->getX()+10);
+          }else{
+            allEnemies[i]->setX(allEnemies[i]->getX()-10);
+          }
+          //allEnemies[i]->setY(allEnemies[i]->getY());
+          
+        }
         redrawObject(allEnemies[i]->getXPrev(), allEnemies[i]->getYPrev());
         draw(allEnemies[i]->getX(), allEnemies[i]->getY(), EnemyBitmap, 32, 32);
       }
     }
   }
 }
-//            INPUT METHODS            //
+//If you a valid enemy you can be consider for collision
+//If you are invalid you are not moving this turn
+bool checkMove(int j){
+  for (int i = 0; i < MAX_ENEMIES; i++){
+    if (allEnemies[i] != NULL && i != j && allEnemies[i]->getValid()){
+      if ( (allEnemies[j]->getX() >= allEnemies[i]->getX() && allEnemies[j]->getX() <= allEnemies[i]->getX()+32) 
+      || (allEnemies[j]->getX()+32 >= allEnemies[i]->getX() && allEnemies[j]->getX()+32 <= allEnemies[i]->getX()+32) ){
+        if ( allEnemies[j]->getY()+32 <= allEnemies[i]->getY()+32 && allEnemies[j]->getY() <= allEnemies[i]->getY()){
+          return false;
+        }
+      }
+    }
+  }
+  
+  return true;
+}
+//-------------------------------------------------------INPUT METHODS----------------------------------------------------------//
 void readInput(){
     toggle->process();
     if (selection){
@@ -368,7 +318,62 @@ void interpretInput(int note){
   
 }
 
- //       TOGGLE METHODS        //
+//----------------------------------------------------MIDI FUNCTIONS---------------------------------------------//
+void onNoteOn(byte channel, byte note, byte velocity){
+  //Serial.print("Note On, ch=");
+  //Serial.print(channel);
+  Serial.print("\nnote= ");
+  Serial.print(note);
+  //Serial.print(", velocity=");
+  //Serial.print(velocity);
+  Serial.println();
+  if (!gameOn){
+    advanceMenu(note);
+    menuStep++;
+  }
+  else{
+    interpretInput(note);
+    usbMIDI.sendNoteOn(note, velocity, channel);
+    digitalWrite(2, HIGH);
+  }
+}
+void onNoteOff(byte channel, byte note, byte velocity){
+  usbMIDI.sendNoteOff(note, 0, channel);
+  digitalWrite(2, LOW);
+}
+
+void onControlChange(byte channel, byte control, byte value){}
+
+ //----------------------------------------------------------Rotary Methods------------------------------------//
+void oneClickLeft() {
+  Serial.println(menuStep);
+  if (menuStep == 2){
+      if (currKey-1 >= 0){
+        currKey -= 1;
+      }else{
+        currKey =11;
+      }
+  }else{
+    if (!currMode){currMode = 1;}
+    else{currMode = 0;}
+  }
+  displayKeyChoice();
+}
+
+void oneClickRight() {
+  if (menuStep == 2){
+    if (currKey+1 <= 11){
+        currKey += 1;
+    }else{
+      currKey = 0;
+    }
+  }else{
+    if (!currMode){currMode = 1;}
+    else{currMode = 0;}
+  }
+  displayKeyChoice();
+}
+//-----------------------------------------------------TOGGLE METHODS----------------------------------------------------//
 
 void advanceMenu(int note){
     if (menuStep == 0){
@@ -395,8 +400,9 @@ void advanceMenu(int note){
     }
     else{
         selection = false;
-        currScale = new Scale(letters[currKey]);
+        currScale = new Scale(letters[currKey], currMode);
         curr = currScale->getStartingNote();
+        currScale->SanityCheckNodes();
         tft.fillScreen(ILI9341_BLACK);
         for (int i = 3; i != 0; i--){
             writeText(50, 60, ILI9341_WHITE, 3, i);
@@ -409,45 +415,6 @@ void advanceMenu(int note){
         menuStep = 0;
         differenceTime = millis();
     }
-}
-void oneClickLeft() {
-  Serial.println(menuStep);
-  if (menuStep == 3){
-      if (currKey-1 >= 0){
-        currKey -= 1;
-      }else{
-        currKey =11;
-      }
-  }else{
-    if (currMode-1 >= 0){
-        currMode -= 1;
-      }else{
-        currMode = 2;
-      }
-  }
-  displayKeyChoice();
-}
-
-void oneClickRight() {
-  if (menuStep == 3){
-    if (currKey+1 <= 11){
-        currKey += 1;
-    }else{
-      currKey = 0;
-    }
-  }else{
-    if (currMode+1 <= 2){
-        currMode += 1;
-    }else{
-      currMode = 0;
-    }
-  }
-  displayKeyChoice();
-}
-void displayKeyChoice(){
-  tft.fillRect(100, 100, 300, 100, ILI9341_BLACK);
-  writeText(100, 100, ILI9341_YELLOW, 2, arrLetters[currKey]);
-  writeText(150, 100, ILI9341_RED, 2, modes[currMode]);
 }
 void onSwitch(){ //Toggle on Press
     tft.setRotation(3);
@@ -466,19 +433,42 @@ void onPoweroff(){ //Toggle on Off
     player1.setX(0);
     player1.setY(208);
     secs = 0;
-    //curr = n12;
     numEnemies = 0;
     numEnemiesKilled = 0;
+    oldPosition = 0;
+    currKey = 0;
+    currMode = 0;
    
 }
 
-void onRelease(){ //Empty method
+void onRelease(){}//Empty method
+
+//-------------------------------------------DISPLAYING THINGS-------------------------------------------//
+void displayKeyChoice(){
+  tft.fillRect(100, 100, 300, 100, ILI9341_BLACK);
+  writeText(100, 100, ILI9341_YELLOW, 2, arrLetters[currKey]);
+  writeText(150, 100, ILI9341_RED, 2, modes[currMode]);
 }
-
-
-//      DISPLAYING THINGS //
-
-
+void displayScore(){
+  int score  = (int)gameTimer * numEnemiesKilled;
+  tft.fillScreen(ILI9341_BLACK);
+  writeText(80, 50, ILI9341_GREEN, 3, score);
+  delay(3000);
+  draw(0, 0, starImageBitmap, STARIMAGE_WIDTH, STARIMAGE_HEIGHT);
+  writeText(50, 120, ILI9341_WHITE, 2, "THANKS FOR PLAYING");
+  delay(2000);
+  gameOn = false;
+}
+void EndingSequence(){
+  tft.fillScreen(ILI9341_BLACK);
+  for (int i = 0; i < 3; i++){
+    writeText(60, 50, ILI9341_GREEN, 3, "GAME OVER");
+    delay(500);
+    writeText(60, 50, ILI9341_BLACK, 3, "GAME OVER");
+    delay(500);
+  }
+  displayScore();
+}
 void writeText(int x, int y, uint16_t color, int sizeText, String message){
   tft.setCursor(x, y);
   tft.setTextColor(color);

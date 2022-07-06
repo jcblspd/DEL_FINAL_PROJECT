@@ -2,17 +2,26 @@
 #include "Node.h"
 #include "Arduino.h"
 
-Scale::Scale(Node *n1){
+Scale::Scale(Node *n1, int _mode){
   int ndata = n1->data;
+  int mode[7];
   int major[7] = {2, 2, 1, 2, 2, 2, 1};
+  int minor[7] = {2, 1, 2, 2, 1, 3, 1};
+  if (!_mode){
+    memcpy(mode, major, sizeof(major));
+    //48 50 52 53 55 57 
+  }else{
+    memcpy(mode, minor, sizeof(minor));
+  }
+  //48 50 51 53 55 56 58
   int i = 6;
   int j = 0;
   while (ndata >= 48){
-    ndata -= major[i];
+    ndata -= mode[i];
     i--;
   }
   i++;
-  ndata+=major[i];
+  ndata+=mode[i];
   Serial.println("NDATA");
   Serial.println(ndata);
   Serial.println(i);
@@ -25,7 +34,7 @@ Scale::Scale(Node *n1){
     else{
       i = 0;
     }
-    ndata+=major[i];
+    ndata+=mode[i];
     j++;
   }
   initalizeNodes();
