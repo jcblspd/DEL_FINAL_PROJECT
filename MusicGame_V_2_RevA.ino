@@ -1,11 +1,4 @@
 //Jacob LaSpada
-/*
- * Desired Features:
- * Implement newLifeTimer
- * Implement Blinking
- * 
- */
-
 
 //-----------------------------------------Setup--------------------------------------------------//
 
@@ -15,11 +8,13 @@
 #include "SPI.h"
 #include "Adafruit_GFX.h"
 #include "Adafruit_ILI9341.h"
+
 //  BITMAPS   //
 #include "StarImage.h"
 #include "SpaceShipImage.h"
 #include "TextTitle.h"
 #include "Enemy1Bitmap.h"
+
 //  USER DEFINED CLASSES //
 #include "InputDevice.h"
 #include "Toggle.h"
@@ -29,6 +24,7 @@
 #include "Enemy.h"
 #include "Node.h"
 #include "Scale.h"
+
 //  DEFINITIONS //
 #define TFT_DC      20
 #define TFT_CS      21
@@ -38,6 +34,7 @@
 #define TFT_MISO    39
 
 using namespace std;
+
 //      Constants       //
 
 const int MAX_WIDTH = 288;
@@ -83,7 +80,6 @@ int menuStep = 0;
 Player player1(0, 208, 'p');
 Player* playerPtr = &player1;
 unsigned long gameTimer = 0;
-unsigned long newLifeTimer = 0; //unused currently
 unsigned long differenceTime = 0;
 int numEnemies = 0;
 int numEnemiesKilled = 0;
@@ -144,11 +140,9 @@ void loop() {
     digitalWrite(3, HIGH);
     readInput();
     if (gameOn){
-      digitalWrite(1, HIGH);
         if (player1.getLives() != 0){
             gameTimer = millis() - differenceTime;
             if (gameTimer % 1000 == 0){
-              //Serial.println("\n\n");
               //checkEnemyConditions();
               secs++;
               redrawObject(300, 0);
@@ -234,6 +228,7 @@ void enemyDisposal(int i){
   numEnemies--;
   player1.setLives(player1.getLives()-1);
 }
+
 void enemyEscape(int i){
   Serial.println("ENEMY ESCAPE");
   Serial.printf("X: %d Y: %d\n", allEnemies[i]->getX(), allEnemies[i]->getY());
@@ -243,10 +238,10 @@ void enemyEscape(int i){
   draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
   allEnemies[i] = NULL;
 }
+
 void moveEnemies(){
   for (int i = 0; i < MAX_ENEMIES; i++){
     if (allEnemies[i] != NULL){
-      
       tft.drawPixel(allEnemies[i]->getX(), allEnemies[i]->getY(), ILI9341_YELLOW);
       if (!(allEnemies[i]->getX() < 0 || allEnemies[i]->getX() > 288 || allEnemies[i]->getY() < 0 || allEnemies[i]->getY() > 208))
       {
@@ -257,8 +252,6 @@ void moveEnemies(){
           }else{
             allEnemies[i]->setX(allEnemies[i]->getX()-10);
           }
-          //allEnemies[i]->setY(allEnemies[i]->getY());
-          
         }
         redrawObject(allEnemies[i]->getXPrev(), allEnemies[i]->getYPrev());
         draw(allEnemies[i]->getX(), allEnemies[i]->getY(), EnemyBitmap, 32, 32);
@@ -266,8 +259,7 @@ void moveEnemies(){
     }
   }
 }
-//If you a valid enemy you can be consider for collision
-//If you are invalid you are not moving this turn
+
 bool checkMove(int j){
   for (int i = 0; i < MAX_ENEMIES; i++){
     if (allEnemies[i] != NULL && i != j && allEnemies[i]->getValid()){
@@ -279,7 +271,6 @@ bool checkMove(int j){
       }
     }
   }
-  
   return true;
 }
 //-------------------------------------------------------INPUT METHODS----------------------------------------------------------//
@@ -298,13 +289,8 @@ void readInput(){
     }
     midiKeyboard.Task();
     midi1.read();
-    
 }
-void interpretInput(int note){
-  //Serial.println("CURRENT");
-  //Serial.println(curr->data);
-  //Serial.println(curr->next->data);
-  
+void interpretInput(int note){  
   if (curr->next->data == note){
     curr = curr->next;
     player1.move(0);
@@ -314,19 +300,10 @@ void interpretInput(int note){
   }
   redrawObject(player1.getXPrev(), player1.getYPrev());
   draw(player1.getX(), player1.getY(), SpaceShipBitmap, 32, 32);
-  
-  
 }
 
 //----------------------------------------------------MIDI FUNCTIONS---------------------------------------------//
 void onNoteOn(byte channel, byte note, byte velocity){
-  //Serial.print("Note On, ch=");
-  //Serial.print(channel);
-  Serial.print("\nnote= ");
-  Serial.print(note);
-  //Serial.print(", velocity=");
-  //Serial.print(velocity);
-  Serial.println();
   if (!gameOn){
     advanceMenu(note);
     menuStep++;
@@ -334,19 +311,16 @@ void onNoteOn(byte channel, byte note, byte velocity){
   else{
     interpretInput(note);
     usbMIDI.sendNoteOn(note, velocity, channel);
-    digitalWrite(2, HIGH);
   }
 }
 void onNoteOff(byte channel, byte note, byte velocity){
   usbMIDI.sendNoteOff(note, 0, channel);
-  digitalWrite(2, LOW);
 }
 
 void onControlChange(byte channel, byte control, byte value){}
 
  //----------------------------------------------------------Rotary Methods------------------------------------//
 void oneClickLeft() {
-  Serial.println(menuStep);
   if (menuStep == 2){
       if (currKey-1 >= 0){
         currKey -= 1;
@@ -377,7 +351,6 @@ void oneClickRight() {
 
 void advanceMenu(int note){
     if (menuStep == 0){
-        
         tft.fillScreen(ILI9341_BLACK);
         writeText(25, 25, ILI9341_WHITE, 1, "Play the correct sequence of keys to move");
         writeText(25, 35, ILI9341_WHITE, 1, "the space ship.");
@@ -388,14 +361,12 @@ void advanceMenu(int note){
         
     }
     else if(menuStep == 1){
-     
       tft.fillScreen(ILI9341_BLACK);
       writeText(25, 25, ILI9341_WHITE, 1, "Choose a Scale");
       writeText(25, 50, ILI9341_WHITE, 1, "Press any key to confirm your choices");
       displayKeyChoice();
     }
     else if (menuStep == 2){
-      
       displayKeyChoice();
     }
     else{
