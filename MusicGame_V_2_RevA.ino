@@ -242,7 +242,7 @@ void enemyEscape(int i){
 void moveEnemies(){
   for (int i = 0; i < MAX_ENEMIES; i++){
     if (allEnemies[i] != NULL){
-      tft.drawPixel(allEnemies[i]->getX(), allEnemies[i]->getY(), ILI9341_YELLOW);
+      
       if (!(allEnemies[i]->getX() < 0 || allEnemies[i]->getX() > 288 || allEnemies[i]->getY() < 0 || allEnemies[i]->getY() > 208))
       {
         allEnemies[i]->move(player1.getX(), player1.getY(), gameTimer);
